@@ -20,14 +20,17 @@ az account set -s 'my-subscription-name-or-id'
 ```bash
 git clone https://github.com/aleguillen/azure-iaas.git
 cd azure-iaas
+chmod 777 -R .
 ```
 
-### Update and Run your variables file
+## [LAB 1 - Create Base Infrastructure](./lab1.sh)
 
 ```bash
-sh ./setup-variables.sh
+./1.sh
 ```
 
-## Create Azure VMSS
+## LAB 2 - Create a VMSS
+```bash
+./2.sh
+```
 
-### 
