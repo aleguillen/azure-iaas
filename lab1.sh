@@ -1,5 +1,5 @@
 # USE GLOBAL VARIABLES
-sh ./set-variables.sh   # CHANGE DEFAULTS USING: sh ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
+source ./set-variables.sh   # CHANGE DEFAULTS USING: sh ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
 
 echo "Current Azure Subscription:"
 az account show
@@ -10,7 +10,7 @@ az group create --location $LOCATION --name $RG_NAME
 echo "Creating Virtual Network:"
 az network vnet create \
     --resource-group $RG_NAME \
-    --location $LOCATIONC \
+    --location $LOCATION \
     --name $VNET_NAME \
     --address-prefixes 10.0.0.0/16 \
     --subnet-name lb-snet \

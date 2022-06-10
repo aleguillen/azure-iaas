@@ -1,4 +1,6 @@
+#!/usr/bin/env bash
 ## THIS FILE CONTAINS ALL WORKSHOP VARIABLES
+
 # Default Values
 DEPLOYMENT_NAME="workshop"
 LOCATION="eastus2"
@@ -39,8 +41,10 @@ KV_NAME="$DEPLOYMENT_NAME-$LOCATION-kv"
 echo " - KV_NAME = " $KV_NAME
 
 
+
 VM_NAME="$DEPLOYMENT_NAME-$LOCATION-vm-$INDEX"
 echo " - VM_NAME = " $VM_NAME
 
 VMSS_NAME="$DEPLOYMENT_NAME-$LOCATION-vmss-$INDEX"
 echo " - VMSS_NAME = " $VMSS_NAME
+
