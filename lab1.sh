@@ -43,21 +43,83 @@ az network nsg rule create \
     --access allow \
     --priority 200
 
-if [[ -n "$VM_IMAGE" ]]
-then
-  echo "IMAGE FOUND: $GOLDEN_IMAGE"
-  IMAGE=$GOLDEN_IMAGE
-
-else
-  echo "NO CUSTOM IMAGE SPECIFIED"
-  IMAGE="UbuntuLTS"
-fi 
-
-echo "Creating VMSS - admin user: azureuser (SSH keys generated)"
-az vmss create \
+echo "Creating Internal Load Balancer (LB)"
+az network lb create \
     --resource-group $RG_NAME \
-    --name $VMSS_NAME \
-    --image $IMAGE \
-    --upgrade-policy-mode automatic \
-    --admin-username azureuser \
-    --generate-ssh-keys
+    --name internal-lb \
+    --sku Standard \
+    --vnet-name $VNET_NAME \
+    --subnet lb-snet \
+    --frontend-ip-name myFrontEnd \
+    --backend-pool-name myBackEndPool
+
+az network lb probe create \
+    --resource-group $RG_NAMEG \
+    --lb-name internal-lb \
+    --name HTTPHealthProbe \
+    --protocol tcp \
+    --port 80
+
+az network lb rule create \
+    --resource-group $RG_NAME \
+    --lb-name internal-lb \
+    --name HTTPLBrule \
+    --protocol tcp \
+    --frontend-port 80 \
+    --backend-port 80 \
+    --frontend-ip-name myFrontEnd \
+    --backend-pool-name myBackEndPool \
+    --probe-name HTTPHealthProbe \
+    --idle-timeout 15 \
+    --enable-tcp-reset true
+
+echo "Creating Public Load Balancer:"
+az network public-ip create \
+    --resource-group $RG_NAMEG \
+    --name public-ip \
+    --sku Standard
+
+az network lb create \
+    --resource-group $RG_NAMEG \
+    --name public-lb \
+    --sku Standard \
+    --public-ip-address public-ip \
+    --frontend-ip-name myFrontEnd \
+    --backend-pool-name myBackEndPool
+
+az network lb probe create \
+    --resource-group $RG_NAME \
+    --lb-name public-lb \
+    --name HTTPHealthProbe \
+    --protocol tcp \
+    --port 80
+
+az network lb rule create \
+    --resource-group $RG_NAME \
+    --lb-name public-lb \
+    --name HTTPAllowRule \
+    --protocol tcp \
+    --frontend-port 80 \
+    --backend-port 80 \
+    --frontend-ip-name myFrontEnd \
+    --backend-pool-name myBackEndPool \
+    --probe-name HTTPHealthProbe \
+    --idle-timeout 15 \
+    --enable-tcp-reset true
+
+echo "Creating Azure Key Vault"
+az keyvault create \
+    --resource-group $RG_NAME
+    --location $LOCATION \
+    --name $KV_NAME 
+
+echo "Creating Storage Account"
+RG_ID=$(az group show --name $RG_NAME --query id)
+UNIQUE_STRING=$(echo $RG_ID | md5sum | head -c 5)
+STORAGE_ACCOUNT=${DEPLOYMENT_NAME}${UNIQUE_STRING}sa
+az storage account create \
+    -n $STORAGE_ACCOUNT \
+    -g $RG_NAME \
+    -l $LOCATION \
+    --sku Standard_LRS
+    
