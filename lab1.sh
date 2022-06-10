@@ -1,4 +1,5 @@
-sh ./setup-variables.sh -d algutws -l southcentralus -i 1 -g ""
+# USE GLOBAL VARIABLES
+sh ./set-variables.sh   # CHANGE DEFAULTS USING: sh ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
 
 echo "Current Azure Subscription:"
 az account show

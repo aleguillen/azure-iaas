@@ -1,3 +1,10 @@
+## THIS FILE CONTAINS ALL WORKSHOP VARIABLES
+# Default Values
+DEPLOYMENT_NAME="workshop"
+LOCATION="eastus2"
+INDEX="01"
+GOLDEN_IMAGE=""
+
 echo "INPUT VARIABLES:"
 while getopts d:l:i:img: flag
 do
