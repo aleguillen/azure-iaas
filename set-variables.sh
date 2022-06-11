@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 ## THIS FILE CONTAINS ALL WORKSHOP VARIABLES
 
 # Default Values

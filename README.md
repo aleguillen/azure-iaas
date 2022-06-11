@@ -29,6 +29,8 @@ chmod 777 -R .
 ./1.sh
 ```
 
+This script creates the follwoing base Azure infrastructure: Resource Group, Virtual Network with Subnets, Network Security Group, Internal and Public Load Balancer, Key Vault and Storage Account.
+
 ## LAB 2 - Create a VMSS
 ```bash
 ./2.sh

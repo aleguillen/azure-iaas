@@ -21,8 +21,7 @@ az network vnet subnet create \
     --resource-group $RG_NAME \
     --vnet-name $VNET_NAME \
     --address-prefixes 10.0.1.0/24 \
-    --disable-private-link-service-network-policies true \
-    --disable-pro
+    --disable-private-link-service-network-policies true 
 
 echo "Creating NSG for Subnets Security"
 az network nsg create \
@@ -46,7 +45,7 @@ az network nsg rule create \
 echo "Creating Internal Load Balancer (LB)"
 az network lb create \
     --resource-group $RG_NAME \
-    --name internal-lb \
+    --name "internal-lb" \
     --sku Standard \
     --vnet-name $VNET_NAME \
     --subnet lb-snet \
@@ -54,15 +53,15 @@ az network lb create \
     --backend-pool-name myBackEndPool
 
 az network lb probe create \
-    --resource-group $RG_NAMEG \
-    --lb-name internal-lb \
+    --resource-group $RG_NAME \
+    --lb-name "internal-lb" \
     --name HTTPHealthProbe \
     --protocol tcp \
     --port 80
 
 az network lb rule create \
     --resource-group $RG_NAME \
-    --lb-name internal-lb \
+    --lb-name "internal-lb" \
     --name HTTPLBrule \
     --protocol tcp \
     --frontend-port 80 \
@@ -75,13 +74,13 @@ az network lb rule create \
 
 echo "Creating Public Load Balancer:"
 az network public-ip create \
-    --resource-group $RG_NAMEG \
-    --name public-ip \
+    --resource-group $RG_NAME \
+    --name "public-ip" \
     --sku Standard
 
 az network lb create \
-    --resource-group $RG_NAMEG \
-    --name public-lb \
+    --resource-group $RG_NAME \
+    --name "public-lb" \
     --sku Standard \
     --public-ip-address public-ip \
     --frontend-ip-name myFrontEnd \
@@ -89,14 +88,14 @@ az network lb create \
 
 az network lb probe create \
     --resource-group $RG_NAME \
-    --lb-name public-lb \
+    --lb-name "public-lb" \
     --name HTTPHealthProbe \
     --protocol tcp \
     --port 80
 
 az network lb rule create \
     --resource-group $RG_NAME \
-    --lb-name public-lb \
+    --lb-name "public-lb" \
     --name HTTPAllowRule \
     --protocol tcp \
     --frontend-port 80 \
@@ -122,4 +121,21 @@ az storage account create \
     -g $RG_NAME \
     -l $LOCATION \
     --sku Standard_LRS
-    
+
+STORAGE_ID=$(az storage account show --name $RG_NAME --name $STORAGE_ACCOUNT --query id)
+USER_OID=$(az ad signed-in-user show --query id -o tsv) 
+az role assignment create \
+    --role "Storage Blob Data Contributor" \
+    --assignee $USER_OID \
+    --scope $STORAGE_ID
+
+
+az storage container create \
+    --account-name $STORAGE_ACCOUNT \
+    --name scripts 
+
+az storage blob upload \
+    --account-name $STORAGE_ACCOUNT \
+    -f "./custom-script-extension.sh" \
+    -c scripts \
+    -n "custom-script-extension.sh"
