@@ -1,6 +1,10 @@
+###
+### VMSS WITH CUSTOM SCRIPT EXTENSION
+###
+
 # USE GLOBAL VARIABLES
-#source ./set-variables.sh  # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
-source ./set-variables.sh -g "/subscriptions/5202ea18-a138-47f1-a47a-0a24613a45f4/resourceGroups/rg-algut-images/providers/Microsoft.Compute/galleries/imagesalgut/images/Ubuntu-16.04-LTS/versions/1.0.0" 
+source ./set-variables.sh  # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
+#source ./set-variables.sh -g "my-image-resource-id" 
 
 if [[ -n "$GOLDEN_IMAGE" ]]
 then

@@ -1,3 +1,7 @@
+###
+### BASE INFRASTRUCTURE
+###
+
 # USE GLOBAL VARIABLES
 source ./set-variables.sh   # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
 
