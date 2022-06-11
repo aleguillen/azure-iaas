@@ -33,4 +33,4 @@ az vmss extension set \
   --name CustomScript \
   --resource-group $RG_NAME \
   --vmss-name $VMSS_NAME \
-  --settings '{"fileUris":["https://raw.githubusercontent.com/Azure-Samples/compute-automation-configurations/master/automate_nginx.sh"],"commandToExecute":"./automate_nginx.sh"}'
+  --settings '{"fileUris":["https://raw.githubusercontent.com/aleguillen/azure-iaas/main/custom-script-extension.sh"],"commandToExecute":"./custom-script-extension.sh"}'
