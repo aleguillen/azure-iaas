@@ -23,16 +23,16 @@ cd azure-iaas
 chmod 777 -R .
 ```
 
-## [LAB 1 - Create Base Infrastructure](./lab1.sh)
+###[Create Base Infrastructure](./0.sh)
 
 ```bash
-./1.sh
+./0.sh
 ```
 
 This script creates the follwoing base Azure infrastructure: Resource Group, Virtual Network with Subnets, Network Security Group, Internal and Public Load Balancer, Key Vault and Storage Account.
 
-## LAB 2 - Create a VMSS
+## [LAB 1 - Create a VMSS with Custom Script Extension](./1.sh)
 ```bash
-./2.sh
+./1.sh
 ```
 
