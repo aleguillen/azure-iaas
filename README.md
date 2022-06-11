@@ -23,7 +23,7 @@ cd azure-iaas
 chmod 777 -R .
 ```
 
-###[Create Base Infrastructure](./0.sh)
+### [Create Base Infrastructure](./0.sh)
 
 ```bash
 ./0.sh
