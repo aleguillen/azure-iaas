@@ -133,6 +133,25 @@ az network lb rule create \
     --idle-timeout 15 \
     --enable-tcp-reset true
 
+echo "Setup NAT Gateway for outbound connections for VMSS"
+az network public-ip create \
+    --resource-group $RG_NAME \
+    --name "nat-gw-public-ip" \
+    --sku Standard
+
+az network nat gateway create \
+    --resource-group $RG_NAME \
+    --name "natGateway" \
+    --public-ip-addresses "nat-gw-public-ip" \
+    --idle-timeout 10
+
+az network vnet subnet update \
+    --resource-group $RG_NAME \
+    --vnet-name $VNET2_NAME \
+    --name "private-snet" \
+    --nat-gateway "natGateway"
+
+
 echo "Creating Azure Key Vault:"
 az keyvault create \
     --resource-group $RG_NAME \
