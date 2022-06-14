@@ -27,6 +27,10 @@ do
 done
 
 echo "GENERATING VARIABLES:"
+
+SUB_ID=$(az account show --query id -o tsv)
+echo " - SUB_ID = " $SUB_ID
+
 RG_NAME="$DEPLOYMENT_NAME-$LOCATION-rg"
 echo " - RG_NAME = " $RG_NAME
 
@@ -42,7 +46,7 @@ echo " - NSG_NAME = " $NSG_NAME
 NSG2_NAME="$DEPLOYMENT_NAME-$LOCATION-private-nsg"
 echo " - NSG2_NAME = " $NSG2_NAME
 
-KV_NAME="$DEPLOYMENT_NAME-$LOCATION-kv"
+KV_NAME="$DEPLOYMENT_NAME-$LOCATION-kv-$INDEX"
 echo " - KV_NAME = " $KV_NAME
 
 VM_NAME="$DEPLOYMENT_NAME-$LOCATION-vm-$INDEX"
@@ -54,7 +58,6 @@ echo " - VMSS_NAME = " $VMSS_NAME
 RSV_NAME="$DEPLOYMENT_NAME-$LOCATION-rsv"
 echo " - RSV_NAME = " $RSV_NAME
 
-SUB_ID=$(az account show --query id -o tsv)
 UNIQUE_STRING=$(echo "/subscriptions/$SUB_ID/resourceGroups/$RG_NAME" | md5sum | head -c 5)
 STORAGE_ACCOUNT="${DEPLOYMENT_NAME}${UNIQUE_STRING}sa"
 echo " - STORAGE_ACCOUNT = " $STORAGE_ACCOUNT
