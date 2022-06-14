@@ -11,26 +11,46 @@ az account show
 echo "Creating Resource Group:"
 az group create --location $LOCATION --name $RG_NAME
 
-echo "Creating Virtual Network:"
+echo "Creating Virtual Networks:"
 az network vnet create \
     --resource-group $RG_NAME \
     --location $LOCATION \
     --name $VNET_NAME \
     --address-prefixes 10.0.0.0/16 \
-    --subnet-name lb-snet \
+    --subnet-name "public-snet" \
     --subnet-prefixes 10.0.0.0/24
 
-az network vnet subnet create \
-    --name pe-snet \
+az network vnet create \
     --resource-group $RG_NAME \
-    --vnet-name $VNET_NAME \
-    --address-prefixes 10.0.1.0/24 \
-    --disable-private-link-service-network-policies true 
+    --location $LOCATION \
+    --name $VNET2_NAME \
+    --address-prefixes 10.1.0.0/16 \
+    --subnet-name "private-snet" \
+    --subnet-prefixes 10.1.0.0/24
 
-echo "Creating NSG for Subnets Security"
+az network vnet subnet update \
+    -n "public-snet" \
+    --vnet-name $VNET_NAME \
+    -g $RG_NAME \
+    --disable-private-link-service-network-policies true \
+    --disable-private-endpoint-network-policies true
+
+    
+az network vnet subnet update \
+    -n "private-snet" \
+    --vnet-name $VNET2_NAME \
+    -g $RG_NAME \
+    --disable-private-link-service-network-policies true \
+    --disable-private-endpoint-network-policies true
+
+echo "Creating NSGs for Subnets Security"
 az network nsg create \
     --resource-group $RG_NAME \
     --name $NSG_NAME
+    
+az network nsg create \
+    --resource-group $RG_NAME \
+    --name $NSG2_NAME
 
 echo "For Demo purposes - Create HTTP Allow rule from internet"
 az network nsg rule create \
@@ -46,13 +66,16 @@ az network nsg rule create \
     --access allow \
     --priority 200
 
+az network vnet subnet update -g $RG_NAME -n "public-snet" --vnet-name $VNET_NAME --network-security-group $NSG_NAME
+az network vnet subnet update -g $RG_NAME -n "private-snet" --vnet-name $VNET2_NAME --network-security-group $NSG2_NAME
+
 echo "Creating Internal Load Balancer (LB)"
 az network lb create \
     --resource-group $RG_NAME \
     --name "internal-lb" \
     --sku Standard \
-    --vnet-name $VNET_NAME \
-    --subnet lb-snet \
+    --vnet-name $VNET2_NAME \
+    --subnet "private-snet" \
     --frontend-ip-name myFrontEnd \
     --backend-pool-name myBackEndPool
 
@@ -86,7 +109,7 @@ az network lb create \
     --resource-group $RG_NAME \
     --name "public-lb" \
     --sku Standard \
-    --public-ip-address public-ip \
+    --public-ip-address "public-ip" \
     --frontend-ip-name myFrontEnd \
     --backend-pool-name myBackEndPool
 
@@ -112,14 +135,11 @@ az network lb rule create \
 
 echo "Creating Azure Key Vault"
 az keyvault create \
-    --resource-group $RG_NAME
+    --resource-group $RG_NAME \
     --location $LOCATION \
     --name $KV_NAME 
 
 echo "Creating Storage Account"
-RG_ID=$(az group show --name $RG_NAME --query id)
-UNIQUE_STRING=$(echo $RG_ID | md5sum | head -c 5)
-STORAGE_ACCOUNT=${DEPLOYMENT_NAME}${UNIQUE_STRING}sa
 az storage account create \
     -n $STORAGE_ACCOUNT \
     -g $RG_NAME \
@@ -133,7 +153,12 @@ az role assignment create \
     --assignee $USER_OID \
     --scope $STORAGE_ID
 
+echo "Creating Queue"
+az storage queue create \
+    -n wsqueue \
+    --account-name $STORAGE_ACCOUNT
 
+echo "Creating Storage Account Blob Container:"
 az storage container create \
     --account-name $STORAGE_ACCOUNT \
     --name scripts 
