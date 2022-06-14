@@ -26,7 +26,7 @@ az vmss extension set \
 
 sleep 10
 
-echo "Setting Upgrade Policy to Manual to prevent Auto Upgrades"
+echo "Setting Upgrade Policy temporary to Manual to prevent Auto Upgrades"
 az vmss update \
     --name $VMSS_NAME \
     --resource-group $RG_NAME \
@@ -51,11 +51,29 @@ az vmss update \
     --resource-group $RG_NAME \
     --set UpgradePolicy.AutomaticOSUpgradePolicy.EnableAutomaticOSUpgrade=true
 
-echo "Manually starting Image Upgrade"
+az vmss list-instances \
+  --resource-group $RG_NAME \
+  --name $VMSS_NAME \
+  --output table --query '[].{InstanceId: instanceId, Name: name, ComputerName: osProfile.computerName, AvailabilityZone: zones[0], LatestModelApplied: latestModelApplied, ImageVersion: storageProfile.imageReference.exactVersion}'
+
+echo "Update 1 instance in the scale set if necessary"
+INSTANCE_ID=$(az vmss list-instances \
+  --resource-group $RG_NAME \
+  --name $VMSS_NAME \
+  --output tsv --query [0].instanceId)
+
+az vmss update-instances --instance-ids $INSTANCE_ID --name $VMSS_NAME --resource-group $RG_NAME
+
+az vmss list-instances \
+  --resource-group $RG_NAME \
+  --name $VMSS_NAME \
+  --output table --query '[].{InstanceId: instanceId, Name: name, ComputerName: osProfile.computerName, AvailabilityZone: zones[0], LatestModelApplied: latestModelApplied, ImageVersion: storageProfile.imageReference.exactVersion}'
+
+echo "Manually starting OS Image Upgrade"
 az vmss rolling-upgrade start --resource-group $RG_NAME --name $VMSS_NAME
 
 echo "Retrieving OS Upgrade History"
-az vmss get-os-upgrade-history --resource-group $RG_NAME --name $VMSS_NAME
+az vmss get-os-upgrade-history --resource-group $RG_NAME --name $VMSS_NAME --output table --query '[].{ startTime: properties.runningStatus.startTime, startedBy: properties.startedBy, StatusCode:  properties.runningStatus.code}'
 
 echo "Current Instances and Versions in the Scale Set after OS Upgrade"
 az vmss list-instances \
