@@ -142,6 +142,16 @@ PE_IP_ADDRESS=$(az network nic show --ids $PE_NIC_ID --query ipConfigurations[0]
 
 PUBLIC_IP=$(az network public-ip show --resource-group $RG_NAME --name "public-ip" --query ipAddress -o tsv)
 
-echo "To SSH to the Jump Public Server execute: ssh azureuser@$PUBLIC_IP"
+echo "Setting Storage Blob RBAC to grant Contributor acccess for VMSS:"
+STORAGE_ID=$(az storage account show --name $RG_NAME --name $STORAGE_ACCOUNT --query id -o tsv)
+VMSS_MSI=$(az vmss show --resource-group $RG_NAME --name $VMSS_NAME --query identity.principalId -o tsv)
+az role assignment create \
+    --role "Contributor" \
+    --assignee $VMSS_MSI \
+    --scope $STORAGE_ID
 
-echo "Then SSH to the VMSS: echo $VMSS_PASS | ssh azureuser@$PE_IP_ADDRESS"
+echo "To SSH to the Jump Public Server execute:"
+echo "ssh azureuser@$PUBLIC_IP"
+echo "Then SSH to the VMSS, your password is $VMSS_PASS : "
+echo "ssh azureuser@$PE_IP_ADDRESS"
+
