@@ -14,8 +14,7 @@ az monitor autoscale create \
   --name "$VMSS_NAME-autoscale" \
   --min-count 1 \
   --max-count 3 \
-  --count 2
-
+  --count 1
 
 echo "Create Auto-Scaling Rule based on Storage Queue Message Count."
 echo "IF MessageCount > 3 or CPU > 75%, then SCALE OUT by 1."
@@ -66,5 +65,5 @@ do
     --account-name $STORAGE_ACCOUNT
 done
 
-### TO cleear and Scale down the VMSS with AutoScaling, clear the queue executing:
-# az storage message clear -q wsqueue --account-name $STORAGE_ACCOUNT
+## Clear Storage Account Queue to force VMSS to scale down
+#az storage message clear -q wsqueue --account-name $STORAGE_ACCOUNT
