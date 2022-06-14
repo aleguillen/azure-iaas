@@ -51,17 +51,21 @@ To create your Base infrastructure run:
 
 ## [LAB 1 - Create a VMSS with Custom Script Extension](./1-vmss.sh)
 
-Now that we have created the base infrastructure, we can create a VM behind the Public LB with an Extension to configure Html Hello World Page and a private VMSS behind the Internal LB.
+Now that we have created our base infrastructure, we can create a VM behind the Public LB with an Extension to configure Html Hello World Page and a private VMSS behind the Internal LB.
+
+For this lab, I recommend using a **Golden Image** with a **specific version** (but do not select the latest version number). In my case I have an Ubuntu image definition in my Azure Compute Gallery with 2 versions: 1.0.0 and 1.0.1, I will use for this lab 1.0.0. 
+
+In case you don't have a Golden Image, the latest Azure Marketplace Ubuntu image will be use. Note, that lab 4 may be slightly impacted.
 
 ![](/.img/vm-and-vmss.png)
 
-If you want to use a Golden Image for your VMs, update 1-vmss.sh code Global Variables:
+If you want to use a Golden Image for your VMs, update **1-vmss.sh** code Global Variables. From:
 ```bash
 source ./set-variables.sh
 ```
-with
+to
 ```bash
-source ./set-variables.sh -g "<my-image-resource-id>" 
+source ./set-variables.sh -g "/subscriptions/<SUB_ID>/resourceGroups/<RG_NAME>/providers/Microsoft.Compute/galleries/<GALLERY_NAME>/images/IMG_DEF/versions/1.0.0"
 ```
 
 To create your VM and VMSS run:
@@ -69,11 +73,36 @@ To create your VM and VMSS run:
 ./1-vmss.sh
 ```
 
+Note that Virtual Machine is using Custom Script to configura NGINX Welcome Page, and VMSS is using Cloud Init to do the same. To test both are setup correctly, we can use Run-Command to curl inside the servers (this code is already  part of 1-vmss.sh script, however you can run it several times for testing)
+
+```bash
+source ./set-variables.sh
+
+echo "Testing using Run-Command Welcome page - From VM"
+az vm run-command invoke \
+  -g $RG_NAME \
+  -n $VM_NAME \
+  --command-id RunShellScript \
+  --scripts "curl localhost"
+
+echo "Testing using Run-Command Welcome page - From VMSS"
+INSTANCE_ID=$(az vmss list-instances \
+  --resource-group $RG_NAME \
+  --name $VMSS_NAME \
+  --output tsv --query [0].instanceId)
+
+az vmss run-command invoke \
+  --resource-group $RG_NAME \
+  --name $VMSS_NAME \
+  --instance-id $INSTANCE_ID \
+  --command-id RunShellScript \
+  --scripts "curl localhost" 
+
+```
+
 ## [LAB 2 - Configure VMSS AutoScaling](./2-vmss-autoscaling.sh)
 
 With your new VMSS we can now leverage features like AutoScaling. We are going to autoscale base on the Storage Messaging queue.
-
-![](/.img/vm-and-vmss.png)
 
 To configure your VMSS automatically run:
 ```bash
@@ -83,7 +112,7 @@ To configure your VMSS automatically run:
 Check that 2 VMs will be created due to the default Overprovisioning setting set to true.
 With overprovisioning turned on, the scale set actually spins up more VMs than you asked for, then deletes the extra VMs once the requested number of VMs are successfully provisioned. Overprovisioning improves provisioning success rates and reduces deployment time. You are not billed for the extra VMs, and they do not count toward your quota limits. 
 
-To Scale down the VMSS with using AutoScaler rules, clear the queue by executing:
+**To Scale down the VMSS with using AutoScaler rules, clear the queue by executing:**
 ```bash
 source ./set-variables.sh
 az storage message clear -q wsqueue --account-name $STORAGE_ACCOUNT
@@ -101,11 +130,79 @@ To configure your Private Endpoints automatically run:
 ./3-networking.sh
 ```
 
-To SSH to your VMSS instances we will need to Jump into our VM (for demo purposes this is a public server). Then we will use the Private Endpoint (usually from another Network, but for demo purposes connected to the Private Link Service  
-With overprovisioning turned on, the scale set actually spins up more VMs than you asked for, then deletes the extra VMs once the requested number of VMs are successfully provisioned. Overprovisioning improves provisioning success rates and reduces deployment time. You are not billed for the extra VMs, and they do not count toward your quota limits. 
+To SSH to your VMSS instances we will need to Jump into our VM in VNET-01. Then use the Private Endpoint's IP address from VNET-01 to connect to our VMSS, passing through our Private Link Service, then Internal Load Balancer until finally hit or VMSS located in VNET-02 (Connectivity path: VM -> PE -> PLS -> ILB -> VMSS).
 
-To Scale down the VMSS with using AutoScaler rules, clear the queue by executing:
+**To check you are using Private Endpoint to connect to your Storage Account you can use nslookup to your Storage Account, you should see a Private IP resolution from your Private DNS Zone.**
 ```bash
 source ./set-variables.sh
-az storage message clear -q wsqueue --account-name $STORAGE_ACCOUNT
+nslookup "$STORAGE_ACCOUNT.blob.core.windows.net"
+```
+
+If you want to test MSI authentication with Private Endpoint access to your storage account you can run the following command (mak sure all REPLACE-ME tags are updated), inside the VMSS SSH console.
+```bash
+STORAGE_ACCOUNT=<REPLACE_ME>
+SUB_ID=<REPLACE_ME>
+RG_NAME=<REPLACE_ME>
+
+response=$(curl "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fmanagement.azure.com%2F" -H Metadata:true -s)
+access_token=$(echo $response | python -c 'import sys, json; print (json.load(sys.stdin)["access_token"])')
+echo "The managed identities for Azure resources access token is $access_token"
+
+exp=$(date -u -d '+ 1 hour' "+%Y-%m-%dT%H:%M:%SZ")
+
+echo "Retriving SAS token using MSI access token"
+sas_response=$(curl https://management.azure.com/subscriptions/$SUB_ID/resourceGroups/$RG_NAME/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT/listServiceSas/?api-version=2017-06-01 -X POST -d "{\"canonicalizedResource\":\"/blob/$STORAGE_ACCOUNT/scripts\",\"signedResource\":\"c\",\"signedPermission\":\"rcw\",\"signedProtocol\":\"https\",\"signedExpiry\":\"$exp\"}" -H "Authorization: Bearer $access_token")
+sas=$(echo $sas_response | python -c 'import sys, json; print (json.load(sys.stdin)["serviceSasToken"])')
+echo "SAS Token: $sas"
+
+echo "Curl blob: https://$STORAGE_ACCOUNT.blob.core.windows.net/scripts/custom-script-extension.sh?$sas" 
+curl https://$STORAGE_ACCOUNT.blob.core.windows.net/scripts/custom-script-extension.sh?$sas 
+```
+
+To get out of your current SSH connection, run:
+```bash
+exit
+```
+
+## [LAB 4 - Configure VMSS Auto OS Image Upgrade](./4-auto-os-img.sh)
+
+We previously created a VMSS with an specific image version. But, what about if you would like your image be automatically applied in your scale set when a new version is available in your Azure Compute Gallery or Azure Marketplace?
+
+Note that Auto OS Image Upgrade require a **Health Check probe** to make sure the VM is Healthy before moving on to the next batch of server (20% at a time), so this script is also creating an HTTP health check. 
+
+By default the Upgrade policy is set to Automatic. Once that we our Health Check and all our instances are updated, and to be able to control our updates in this demo, we will set it to Manual inside the provided script. 
+
+If you are are using a Custom Image, make sure it points to a latest version and you update **4-auto-os-img.sh** variables accordingly. From:
+
+```bash
+source ./set-variables.sh
+```
+to 
+```bash
+source ./set-variables.sh -g "/subscriptions/<SUB_ID>/resourceGroups/<RG_NAME>/providers/Microsoft.Compute/galleries/<GALLERY_NAME>/images/IMG_DEF"
+```
+**Note there is no "/versions/X.X.X" at the end of the Image Resource Id.**
+
+To configure VMSS Auto OS Upgrade run:
+```bash
+./4-auto-os-img.sh
+```
+
+## [LAB 5 - Create Recovery Services Vault and configure Virtual Machine Backup](./5-rsv.sh)
+
+Our current demo architecture has a single point of failure, the Virtual Machine, in case of disaster there are still ways to recover. 
+
+Recovery Services Vault, will allow us to create VM Backups that will allow you to either recover the entire VM or files.
+
+To Create and configure Azure Backup, run:
+```bash
+./5-rsv.sh
+```
+
+## [Clean-up Resources](./rg-clean-up.sh)
+
+To remove all resources in your Resource Group, to avoid unnecessary charges, run:
+
+```bash
+./rg-clean-up.sh
 ```
