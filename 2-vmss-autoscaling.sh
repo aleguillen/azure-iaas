@@ -4,7 +4,7 @@
 
 # USE GLOBAL VARIABLES
 source ./set-variables.sh  # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
-#source ./set-variables.sh -g "my-image-resource-id" 
+#source ./set-variables.sh -g "/subscriptions/SUB_ID/resourceGroups/RG_NAME/providers/Microsoft.Compute/galleries/GALLERY_NAME/images/IMG_DEF/versions/1.0.0"
 
 echo "Define an autoscale profile"
 az monitor autoscale create \
@@ -12,9 +12,9 @@ az monitor autoscale create \
   --resource $VMSS_NAME \
   --resource-type "Microsoft.Compute/virtualMachineScaleSets" \
   --name "$VMSS_NAME-autoscale" \
-  --min-count 1 \
+  --min-count 2 \
   --max-count 3 \
-  --count 1
+  --count 2
 
 echo "Create Auto-Scaling Rule based on Storage Queue Message Count."
 echo "IF MessageCount > 3 or CPU > 75%, then SCALE OUT by 1."

@@ -23,7 +23,7 @@ do
             FLAG_NAME=GOLDEN_IMAGE
             GOLDEN_IMAGE=${OPTARG};;
     esac
-    echo " - "$FLAG_NAME " = " ${OPTARG}
+    echo " - "$FLAG_NAME"="${OPTARG}
 done
 
 echo "GENERATING VARIABLES:"

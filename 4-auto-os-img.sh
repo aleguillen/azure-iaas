@@ -4,50 +4,61 @@
 
 # USE GLOBAL VARIABLES
 source ./set-variables.sh  # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
-#source ./set-variables.sh -g "my-image-resource-id" 
+#source ./set-variables.sh -g "/subscriptions/SUB_ID/resourceGroups/RG_NAME/providers/Microsoft.Compute/galleries/GALLERY_NAME/images/IMG_DEF"
 
-echo "Setting Auto Scaling for VMSS"
+echo "Retrieving OS Upgrade History"
+az vmss get-os-upgrade-history --resource-group $RG_NAME --name $VMSS_NAME
+
+echo "Current Instances and Versions in the Scale Set before OS Upgrade"
+az vmss list-instances \
+  --resource-group $RG_NAME \
+  --name $VMSS_NAME \
+  --output table --query '[].{InstanceId: instanceId, Name: name, ComputerName: osProfile.computerName, AvailabilityZone: zones[0], LatestModelApplied: latestModelApplied, ImageVersion: storageProfile.imageReference.exactVersion}'
+
+echo "Setting Application Health Linux extension for Health Check"
+az vmss extension set \
+  --name ApplicationHealthLinux \
+  --publisher Microsoft.ManagedServices \
+  --version 1.0 \
+  --resource-group $RG_NAME \
+  --vmss-name $VMSS_NAME \
+  --settings '{ "protocol": "http", "port": 80, "requestPath": "/"}'
+
+sleep 10
+
+echo "Setting Upgrade Policy to Manual to prevent Auto Upgrades"
 az vmss update \
-    --name MyScaleSet \
-    --resource-group MyResourceGroup \
-    --set virtualMachineProfile.storageProfile.imageReference.id=imageID
+    --name $VMSS_NAME \
+    --resource-group $RG_NAME \
+    --set upgradePolicy.mode="Manual"
+    
+if [[ -n "$GOLDEN_IMAGE" ]]
+then
+echo "IMAGE FOUND: $GOLDEN_IMAGE. Updating Image Reference ID"
+IMAGE=$GOLDEN_IMAGE
+az vmss update \
+  --name $VMSS_NAME \
+  --resource-group $RG_NAME \
+  --set virtualMachineProfile.storageProfile.imageReference.id="$IMAGE"
+else
+  echo "NO CUSTOM IMAGE SPECIFIED: Setting Default"
+  IMAGE="UbuntuLTS"
+fi 
 
-az vmss update [--add]
-               [--automatic-repairs-action {Reimage, Replace, Restart}]
-               [--automatic-repairs-grace-period]
-               [--capacity-reservation-group]
-               [--enable-automatic-repairs {false, true}]
-               [--enable-cross-zone-upgrade {false, true}]
-               [--enable-secure-boot {false, true}]
-               [--enable-spot-restore {false, true}]
-               [--enable-terminate-notification {false, true}]
-               [--enable-vtpm {false, true}]
-               [--ephemeral-os-disk-placement {CacheDisk, ResourceDisk}]
-               [--force-deletion]
-               [--force-string]
-               [--ids]
-               [--instance-id]
-               [--license-type {None, RHEL_BASE, RHEL_BASESAPAPPS, RHEL_BASESAPHA, RHEL_BYOS, RHEL_ELS_6, RHEL_EUS, RHEL_SAPAPPS, RHEL_SAPHA, SLES, SLES_BYOS, SLES_HPC, SLES_SAP, SLES_STANDARD, Windows_Client, Windows_Server}]
-               [--max-batch-instance-percent]
-               [--max-price]
-               [--max-unhealthy-instance-percent]
-               [--max-unhealthy-upgraded-instance-percent]
-               [--name]
-               [--no-wait]
-               [--pause-time-between-batches]
-               [--ppg]
-               [--prioritize-unhealthy-instances {false, true}]
-               [--priority {Low, Regular, Spot}]
-               [--protect-from-scale-in {false, true}]
-               [--protect-from-scale-set-actions {false, true}]
-               [--remove]
-               [--resource-group]
-               [--scale-in-policy {Default, NewestVM, OldestVM}]
-               [--set]
-               [--spot-restore-timeout]
-               [--terminate-notification-time]
-               [--ultra-ssd-enabled {false, true}]
-               [--user-data]
-               [--v-cpus-available]
-               [--v-cpus-per-core]
-               [--vm-sku]
+echo "Enabling Auto OS Image upgrade for VMSS with "
+az vmss update \
+    --name $VMSS_NAME \
+    --resource-group $RG_NAME \
+    --set UpgradePolicy.AutomaticOSUpgradePolicy.EnableAutomaticOSUpgrade=true
+
+echo "Manually starting Image Upgrade"
+az vmss rolling-upgrade start --resource-group $RG_NAME --name $VMSS_NAME
+
+echo "Retrieving OS Upgrade History"
+az vmss get-os-upgrade-history --resource-group $RG_NAME --name $VMSS_NAME
+
+echo "Current Instances and Versions in the Scale Set after OS Upgrade"
+az vmss list-instances \
+  --resource-group $RG_NAME \
+  --name $VMSS_NAME \
+  --output table --query '[].{InstanceId: instanceId, Name: name, ComputerName: osProfile.computerName, AvailabilityZone: zones[0], LatestModelApplied: latestModelApplied, ImageVersion: storageProfile.imageReference.exactVersion}'

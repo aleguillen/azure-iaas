@@ -3,7 +3,8 @@
 ###
 
 # USE GLOBAL VARIABLES
-source ./set-variables.sh   # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
+source ./set-variables.sh  # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
+#source ./set-variables.sh -g "/subscriptions/SUB_ID/resourceGroups/RG_NAME/providers/Microsoft.Compute/galleries/GALLERY_NAME/images/IMG_DEF/versions/1.0.0"
 
 echo "Current Azure Subscription:"
 az account show
@@ -18,7 +19,7 @@ az network vnet create \
     --name $VNET_NAME \
     --address-prefixes 10.0.0.0/16 \
     --subnet-name "public-snet" \
-    --subnet-prefixes 10.0.0.0/24
+    --subnet-prefixes 10.0.0.0/24 
 
 az network vnet create \
     --resource-group $RG_NAME \

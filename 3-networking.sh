@@ -4,7 +4,7 @@
 
 # USE GLOBAL VARIABLES
 source ./set-variables.sh  # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
-#source ./set-variables.sh -g "my-image-resource-id" 
+#source ./set-variables.sh -g "/subscriptions/SUB_ID/resourceGroups/RG_NAME/providers/Microsoft.Compute/galleries/GALLERY_NAME/images/IMG_DEF/versions/1.0.0"
 
 echo "Creating Private Endpoint to Storage Account:"
 
