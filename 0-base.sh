@@ -133,11 +133,19 @@ az network lb rule create \
     --idle-timeout 15 \
     --enable-tcp-reset true
 
-echo "Creating Azure Key Vault"
+echo "Creating Azure Key Vault:"
 az keyvault create \
     --resource-group $RG_NAME \
     --location $LOCATION \
-    --name $KV_NAME 
+    --name $KV_NAME \
+    --enable-rbac-authorization true 
+
+KV_ID=$(az keyvault show --name $RG_NAME --name $KV_NAME --query id -o tsv)
+USER_OID=$(az ad signed-in-user show --query id -o tsv) 
+az role assignment create \
+    --role "Key Vault Administrator" \
+    --assignee $USER_OID \
+    --scope $KV_ID
 
 echo "Creating Storage Account"
 az storage account create \
@@ -146,7 +154,7 @@ az storage account create \
     -l $LOCATION \
     --sku Standard_LRS
 
-STORAGE_ID=$(az storage account show --name $RG_NAME --name $STORAGE_ACCOUNT --query id)
+STORAGE_ID=$(az storage account show --name $RG_NAME --name $STORAGE_ACCOUNT --query id -o tsv)
 USER_OID=$(az ad signed-in-user show --query id -o tsv) 
 az role assignment create \
     --role "Storage Blob Data Contributor" \
