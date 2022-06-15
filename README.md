@@ -38,6 +38,11 @@ Make sure you have right permissions to run files inside your repo's directory:
 chmod 777 -R .
 ```
 
+To open VS Code in Cloud Shell, for easy file management, run:
+```bash
+code .
+```
+
 ### [Create Base Infrastructure](./0-base.sh)
 
 Before we get started, we need the follwowing base Azure infrastructure: Resource Group, Virtual Network with Subnets, Network Security Group, Internal and Public Load Balancer, Key Vault and Storage Account.
