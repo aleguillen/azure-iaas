@@ -6,6 +6,12 @@
 source ./set-variables.sh  # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
 #source ./set-variables.sh -g "/subscriptions/SUB_ID/resourceGroups/RG_NAME/providers/Microsoft.Compute/galleries/GALLERY_NAME/images/IMG_DEF/versions/1.0.0"
 
+echo "Current Instances in Scale Set before Scaling"
+az vmss list-instances \
+  --resource-group $RG_NAME \
+  --name $VMSS_NAME \
+  --output table --query '[].{InstanceId: instanceId, Name: name, ComputerName: osProfile.computerName, AvailabilityZone: zones[0], LatestModelApplied: latestModelApplied, ImageVersion: storageProfile.imageReference.exactVersion}'
+
 echo "Define an autoscale profile"
 az monitor autoscale create \
   --resource-group $RG_NAME \
@@ -49,6 +55,15 @@ do
     --queue-name wsqueue \
     --account-name $STORAGE_ACCOUNT
 done
+
+echo "Waiting 30 seconds"
+sleep 30 
+
+echo "Current Instances in Scale Set when Scaling"
+az vmss list-instances \
+  --resource-group $RG_NAME \
+  --name $VMSS_NAME \
+  --output table --query '[].{InstanceId: instanceId, Name: name, ComputerName: osProfile.computerName, AvailabilityZone: zones[0], LatestModelApplied: latestModelApplied, ImageVersion: storageProfile.imageReference.exactVersion}'
 
 ## Clear Storage Account Queue to force VMSS to scale down
 #az storage message clear -q wsqueue --account-name $STORAGE_ACCOUNT
