@@ -1,0 +1,58 @@
+# -----------------------------------------------------------------------------
+# .SYNOPSIS
+#   This is the main pipeline for ADO Deployment. 
+#   The main pipeline will orchestrate the build and deploy to environments. 
+
+# .DESCRIPTION
+#   This pipeline will perform setup tasks for the image by:
+#   1. Copy and Publish Build Artifacts - Terraform scripts.
+#   2. Create Storage Account or Terraform State - https://docs.microsoft.com/en-us/azure/terraform/terraform-backend
+#   3. Find and replace token (variables) in .tf and .tfvars files.
+#   4. Setup Terraform
+#   5. Plan and Apply Terraform
+
+# .ASSUMPTIONS:
+#     1. You are referencing this template from an ado pipeline
+
+# .NOTES
+#     File Name      : azure-pipelines.yml
+#     Prerequisite   : ADO Multi-Stage Yaml Pipeline
+# -----------------------------------------------------------------------------
+
+name: Infra-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    exclude:
+      - /**/*.md
+      - /**/*.sh
+      - /images
+      - /**/LICENSE
+  
+pool:
+  vmImage: ubuntu-18.04
+
+stages: 
+  - stage: Build
+    displayName: Build
+    jobs:
+    - template: /pipelines/build.yml
+      parameters:
+        environment: Build
+
+  - stage: DEV
+    displayName: DEV
+    dependsOn: Build
+    variables:
+      - template: /pipelines/variables.yml
+
+      - name: azure_service_connection_name
+        value: 'my-ado-azure-subscription-service-connection'
+    jobs:
+    - template: /pipelines/environment.yml
+      parameters:
+        environment: DEV
+        service_connection_name: ${{ variables.azure_service_connection_name }}

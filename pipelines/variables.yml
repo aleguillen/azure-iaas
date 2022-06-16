@@ -1,0 +1,14 @@
+variables:
+  environment: workshop 
+  location: eastus2
+  vm_username: azureuser
+  vm_password: ""
+  vm_image_id: ""
+  vm_size: "Standard_DS1_v2"
+  vmss_instances: 2
+
+  resource_group: '$(environment)-$(location)-rg'
+  storagekey: 'PipelineWillGetThisValueRuntime'
+  terraformstorageaccount: workshop853desatf
+  terraformstoragerg: '$(environment)-$(location)-rg'
+

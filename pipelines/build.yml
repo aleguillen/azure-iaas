@@ -1,0 +1,31 @@
+parameters:
+- name: environment
+  type: string
+  displayName: 'The environment name'
+
+- name: dependsOn
+  type: string
+  displayName: 'The components this job depends on like another job'
+  default: ''
+
+jobs:
+- deployment: ${{ parameters.environment }}
+  displayName: ${{ parameters.environment }}
+  environment: ${{ parameters.environment }}
+  dependsOn: ${{ parameters.dependsOn }}
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - checkout: self
+
+        - task: CopyFiles@2
+          displayName: 'Copy Files to: $(Build.ArtifactStagingDirectory)'
+          inputs:
+            TargetFolder: '$(Build.ArtifactStagingDirectory)'
+            SourceFolder: 'terraform'
+
+        - task: PublishBuildArtifacts@1
+          displayName: 'Publish Artifact: infra'
+          inputs:
+            ArtifactName: infra
