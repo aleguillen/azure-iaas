@@ -204,6 +204,49 @@ To Create and configure Azure Backup, run:
 ./5-rsv.sh
 ```
 
+## LAB 6 - Configure Azure DevOps Pipelines and provision with Terraform
+
+This lab will use files under **pipelines** and **terraform** folder. 
+
+* Create a new Azure Service Connection to your Azure Subscription, for more information see [here](https://docs.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints)
+    * Connection type: **Azure Resource Manager**.
+    * Authentication Method: **Service Principal (automatic)** - this option will automatically create the Service Principal on your behalf, if you don't have permissions to create a Service Principal please use the manual option. 
+    * Scope level: Select the appropiate level, for this project I used **Subscription**.
+    * Service connection name: **my-ado-azure-subscription-service-connection**.
+    
+    **Note: The Service connection name can be customized, just remember to update all azure-pipelines.yml files to use the right Service Connection name in the variables section.**
+
+* To import this repository into your Azure Repos, follow [Import Git Repository documentation](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops)
+    * Git repo URL: https://github.com/aleguillen/azure-iaas.git
+
+* Create a new Azure Pipeline to deploy your resouces
+    * Sign-in to your Azure DevOps organization and go to your project.
+    * Go to **Pipelines**, and then select **New pipeline**.
+    * Do the steps of the wizard by first selecting **Azure Repos Git** as the location of your source code.
+    * When you see the list of repositories, **select your repository**.
+    * Under Configura your pipeline, select **Existing Azure Pipelines YAML file** and select the file **/pipelines/azure-pipelines.yml** from the dropdown.
+    * Click **Continue** and **Run** your pipeline.
+
+
+Check in the portal for the new VM. And in the Cloud Shell console you can run these commands, to ensure Cloud-init ran correctly from the pipeline as well:
+
+```bash
+source ./set-variables.sh
+
+INSTANCE_ID=$(az vmss list-instances \
+  --resource-group $RG_NAME \
+  --name $TF_VMSS_NAME \
+  --output tsv --query [0].instanceId)
+
+echo "Testing using Run-Command Welcome page in NGINX - From Terraform VMSS"
+az vmss run-command invoke \
+  --resource-group $RG_NAME \
+  --name $TF_VMSS_NAME \
+  --instance-id $INSTANCE_ID \
+  --command-id RunShellScript \
+  --scripts "curl localhost" 
+```
+
 ## [Clean-up Resources](./rg-clean-up.sh)
 
 To remove all resources in your Resource Group, to avoid unnecessary charges, run:
