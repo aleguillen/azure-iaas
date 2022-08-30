@@ -3,8 +3,8 @@
 ###
 
 # USE GLOBAL VARIABLES
-source ./set-variables.sh  # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid"
-#source ./set-variables.sh -g "/subscriptions/SUB_ID/resourceGroups/RG_NAME/providers/Microsoft.Compute/galleries/GALLERY_NAME/images/IMG_DEF/versions/1.0.0"
+source ./set-variables.sh  # CHANGE DEFAULTS USING: source ./set-variables.sh -d poc -l southcentralus -i 1 -g "myimageid" -p false
+#source ./set-variables.sh -g "/subscriptions/SUB_ID/resourceGroups/RG_NAME/providers/Microsoft.Compute/galleries/GALLERY_NAME/images/IMG_DEF/versions/1.0.0" -p false
 
 echo "Current Azure Subscription:"
 az account show
@@ -13,13 +13,82 @@ echo "Creating Resource Group:"
 az group create --location $LOCATION --name $RG_NAME
 
 echo "Creating Virtual Networks:"
-az network vnet create \
+if [[ "${PUBLIC_RESOURCES,,}" == "true" ]]
+then
+    echo "CREATE PUBLIC VNET RESOURCES"
+
+    az network vnet create \
+        --resource-group $RG_NAME \
+        --location $LOCATION \
+        --name $VNET_NAME \
+        --address-prefixes 10.0.0.0/16 \
+        --subnet-name "public-snet" \
+        --subnet-prefixes 10.0.0.0/24 
+
+    az network vnet subnet update \
+        -n "public-snet" \
+        --vnet-name $VNET_NAME \
+        -g $RG_NAME \
+        --disable-private-link-service-network-policies true \
+        --disable-private-endpoint-network-policies true
+
+    az network nsg create \
     --resource-group $RG_NAME \
-    --location $LOCATION \
-    --name $VNET_NAME \
-    --address-prefixes 10.0.0.0/16 \
-    --subnet-name "public-snet" \
-    --subnet-prefixes 10.0.0.0/24 
+    --name $NSG_NAME
+
+    echo "For Demo purposes - Create HTTP Allow rule from internet"
+    az network nsg rule create \
+        --resource-group $RG_NAME \
+        --nsg-name $NSG_NAME \
+        --name HTTPAllowRule \
+        --protocol '*' \
+        --direction inbound \
+        --source-address-prefix '*' \
+        --source-port-range '*' \
+        --destination-address-prefix '*' \
+        --destination-port-range 80 \
+        --access allow \
+        --priority 200
+
+    az network vnet subnet update -g $RG_NAME -n "public-snet" --vnet-name $VNET_NAME --network-security-group $NSG_NAME
+        
+    echo "Creating Public Load Balancer:"
+    az network public-ip create \
+        --resource-group $RG_NAME \
+        --name "public-ip" \
+        --sku Standard
+
+    az network lb create \
+        --resource-group $RG_NAME \
+        --name "public-lb" \
+        --sku Standard \
+        --public-ip-address "public-ip" \
+        --frontend-ip-name myFrontEnd \
+        --backend-pool-name myBackEndPool
+
+    az network lb probe create \
+        --resource-group $RG_NAME \
+        --lb-name "public-lb" \
+        --name HTTPHealthProbe \
+        --protocol tcp \
+        --port 80
+
+    az network lb rule create \
+        --resource-group $RG_NAME \
+        --lb-name "public-lb" \
+        --name HTTPAllowRule \
+        --protocol tcp \
+        --frontend-port 80 \
+        --backend-port 80 \
+        --frontend-ip-name myFrontEnd \
+        --backend-pool-name myBackEndPool \
+        --probe-name HTTPHealthProbe \
+        --idle-timeout 15 \
+        --enable-tcp-reset true
+
+else
+  echo "NO PUBLIC RESOURCE WILL BE CREATED."
+fi 
 
 az network vnet create \
     --resource-group $RG_NAME \
@@ -30,44 +99,17 @@ az network vnet create \
     --subnet-prefixes 10.1.0.0/24
 
 az network vnet subnet update \
-    -n "public-snet" \
-    --vnet-name $VNET_NAME \
-    -g $RG_NAME \
-    --disable-private-link-service-network-policies true \
-    --disable-private-endpoint-network-policies true
-
-    
-az network vnet subnet update \
     -n "private-snet" \
     --vnet-name $VNET2_NAME \
     -g $RG_NAME \
     --disable-private-link-service-network-policies true \
     --disable-private-endpoint-network-policies true
 
-echo "Creating NSGs for Subnets Security"
-az network nsg create \
-    --resource-group $RG_NAME \
-    --name $NSG_NAME
-    
+echo "Creating NSGs for Subnet Security"
 az network nsg create \
     --resource-group $RG_NAME \
     --name $NSG2_NAME
 
-echo "For Demo purposes - Create HTTP Allow rule from internet"
-az network nsg rule create \
-    --resource-group $RG_NAME \
-    --nsg-name $NSG_NAME \
-    --name HTTPAllowRule \
-    --protocol '*' \
-    --direction inbound \
-    --source-address-prefix '*' \
-    --source-port-range '*' \
-    --destination-address-prefix '*' \
-    --destination-port-range 80 \
-    --access allow \
-    --priority 200
-
-az network vnet subnet update -g $RG_NAME -n "public-snet" --vnet-name $VNET_NAME --network-security-group $NSG_NAME
 az network vnet subnet update -g $RG_NAME -n "private-snet" --vnet-name $VNET2_NAME --network-security-group $NSG2_NAME
 
 echo "Creating Internal Load Balancer (LB)"
@@ -100,58 +142,28 @@ az network lb rule create \
     --idle-timeout 15 \
     --enable-tcp-reset true
 
-echo "Creating Public Load Balancer:"
-az network public-ip create \
-    --resource-group $RG_NAME \
-    --name "public-ip" \
-    --sku Standard
+if [[ "${DEPLOY_NATGW,,}" == "true" ]]
+then
+    echo "Setup NAT Gateway for outbound connections for VMSS"
+    az network public-ip create \
+        --resource-group $RG_NAME \
+        --name "nat-gw-public-ip" \
+        --sku Standard
 
-az network lb create \
-    --resource-group $RG_NAME \
-    --name "public-lb" \
-    --sku Standard \
-    --public-ip-address "public-ip" \
-    --frontend-ip-name myFrontEnd \
-    --backend-pool-name myBackEndPool
+    az network nat gateway create \
+        --resource-group $RG_NAME \
+        --name "natGateway" \
+        --public-ip-addresses "nat-gw-public-ip" \
+        --idle-timeout 10
 
-az network lb probe create \
-    --resource-group $RG_NAME \
-    --lb-name "public-lb" \
-    --name HTTPHealthProbe \
-    --protocol tcp \
-    --port 80
-
-az network lb rule create \
-    --resource-group $RG_NAME \
-    --lb-name "public-lb" \
-    --name HTTPAllowRule \
-    --protocol tcp \
-    --frontend-port 80 \
-    --backend-port 80 \
-    --frontend-ip-name myFrontEnd \
-    --backend-pool-name myBackEndPool \
-    --probe-name HTTPHealthProbe \
-    --idle-timeout 15 \
-    --enable-tcp-reset true
-
-echo "Setup NAT Gateway for outbound connections for VMSS"
-az network public-ip create \
-    --resource-group $RG_NAME \
-    --name "nat-gw-public-ip" \
-    --sku Standard
-
-az network nat gateway create \
-    --resource-group $RG_NAME \
-    --name "natGateway" \
-    --public-ip-addresses "nat-gw-public-ip" \
-    --idle-timeout 10
-
-az network vnet subnet update \
-    --resource-group $RG_NAME \
-    --vnet-name $VNET2_NAME \
-    --name "private-snet" \
-    --nat-gateway "natGateway"
-
+    az network vnet subnet update \
+        --resource-group $RG_NAME \
+        --vnet-name $VNET2_NAME \
+        --name "private-snet" \
+        --nat-gateway "natGateway"
+else
+    echo "NO NAT GATEWAY RESOURCE WILL BE CREATED."
+fi 
 
 echo "Creating Azure Key Vault:"
 az keyvault create \

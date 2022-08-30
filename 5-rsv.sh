@@ -12,20 +12,26 @@ az backup vault create \
     --name $RSV_NAME \
     --location $LOCATION
 
-echo "Enable Backup for VM"
-az backup protection enable-for-vm \
-    --resource-group $RG_NAME \
-    --vault-name $RSV_NAME \
-    --vm $VM_NAME \
-    --policy-name DefaultPolicy
 
-echo "Start initial backup job"
-az backup protection backup-now \
-    --resource-group $RG_NAME \
-    --vault-name $RSV_NAME \
-    --container-name $VM_NAME \
-    --item-name $VM_NAMEmyVM \
-    --backup-management-type AzureIaaSVM
+if [[ "${PUBLIC_RESOURCES,,}" == "true" ]]
+then
+    echo "Enable Backup for VM"
+    az backup protection enable-for-vm \
+        --resource-group $RG_NAME \
+        --vault-name $RSV_NAME \
+        --vm $VM_NAME \
+        --policy-name DefaultPolicy
+
+    echo "Start initial backup job"
+    az backup protection backup-now \
+        --resource-group $RG_NAME \
+        --vault-name $RSV_NAME \
+        --container-name $VM_NAME \
+        --item-name $VM_NAMEmyVM \
+        --backup-management-type AzureIaaSVM
+else
+    echo "NO VM BACKUP SINCE NO VM WAS CREATED."
+fi 
 
 echo "List all Backup Jobs: "
 az backup job list \

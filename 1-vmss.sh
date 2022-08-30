@@ -16,36 +16,59 @@ else
   IMAGE="UbuntuLTS"
 fi 
 
-echo "Creating a Public VM - admin user: azureuser (SSH keys generated)"
+if [[ "${PUBLIC_RESOURCES,,}" == "true" ]]
+then
+  echo "Creating a Public VM - admin user: azureuser (SSH keys generated)"
+  az network nic create \
+          --resource-group $RG_NAME \
+          --name "$VM_NAME-nic" \
+          --vnet-name $VNET_NAME \
+          --subnet "public-snet" 
 
-az network nic create \
-        --resource-group $RG_NAME \
-        --name "$VM_NAME-nic" \
-        --vnet-name $VNET_NAME \
-        --subnet "public-snet" 
+  az vm create \
+      --resource-group $RG_NAME \
+      --name $VM_NAME \
+      --image $IMAGE \
+      --admin-username azureuser \
+      --assign-identity \
+      --authentication-type ssh \
+      --nics "$VM_NAME-nic" \
+      --generate-ssh-keys
 
-az vm create \
+  az network nic ip-config address-pool add \
+    --address-pool myBackEndPool \
+    --ip-config-name ipconfig1 \
+    --nic-name "$VM_NAME-nic" \
     --resource-group $RG_NAME \
+    --lb-name "public-lb"
+
+  # Enable Boot Diagnostics for VM
+  az vm boot-diagnostics enable \
     --name $VM_NAME \
-    --image $IMAGE \
-    --admin-username azureuser \
-    --assign-identity \
-    --authentication-type ssh \
-    --nics "$VM_NAME-nic" \
-    --generate-ssh-keys
+    --resource-group $RG_NAME \
+    --storage "https://$STORAGE_ACCOUNT.blob.core.windows.net"
 
-az network nic ip-config address-pool add \
-   --address-pool myBackEndPool \
-   --ip-config-name ipconfig1 \
-   --nic-name "$VM_NAME-nic" \
-   --resource-group $RG_NAME \
-   --lb-name "public-lb"
+    
+  echo "Adding CustomScript Extension to configure NGINX inside the VM"
+  az vm extension set \
+    -n CustomScript \
+    --publisher Microsoft.Azure.Extensions \
+    --version 2.0 \
+    --vm-name $VM_NAME \
+    --resource-group $RG_NAME \
+    --settings '{"fileUris":["https://raw.githubusercontent.com/aleguillen/azure-iaas/main/custom-script-extension.sh"],"commandToExecute":"./custom-script-extension.sh"}'
+    
+  echo "Testing using Run-Command Welcome page in NGINX - From VM"
+  az vm run-command invoke \
+    -g $RG_NAME \
+    -n $VM_NAME \
+    --command-id RunShellScript \
+    --scripts "curl localhost"
+    
+else 
+  echo "NO PUBLIC VM NEEDED"
+fi 
 
-# Enable Boot Diagnostics for VM
-az vm boot-diagnostics enable \
-  --name $VM_NAME \
-  --resource-group $RG_NAME \
-  --storage "https://$STORAGE_ACCOUNT.blob.core.windows.net"
 
 echo "Creating a Private VMSS - admin user: azureuser (SSH keys generated)"
 az vmss create \
@@ -80,22 +103,6 @@ INSTANCE_ID=$(az vmss list-instances \
   --resource-group $RG_NAME \
   --name $VMSS_NAME \
   --output tsv --query [0].instanceId)
-
-echo "Adding CustomScript Extension to configure NGINX inside the VM"
-az vm extension set \
-  -n CustomScript \
-  --publisher Microsoft.Azure.Extensions \
-  --version 2.0 \
-  --vm-name $VM_NAME \
-  --resource-group $RG_NAME \
-  --settings '{"fileUris":["https://raw.githubusercontent.com/aleguillen/azure-iaas/main/custom-script-extension.sh"],"commandToExecute":"./custom-script-extension.sh"}'
-  
-echo "Testing using Run-Command Welcome page in NGINX - From VM"
-az vm run-command invoke \
-  -g $RG_NAME \
-  -n $VM_NAME \
-  --command-id RunShellScript \
-  --scripts "curl localhost"
 
 echo "Testing using Run-Command Welcome page in NGINX - From VMSS"
 az vmss run-command invoke \
