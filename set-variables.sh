@@ -3,13 +3,12 @@
 
 # Default Values
 DEPLOYMENT_NAME="workshop"
+ENVIRONMENT="demo"
 LOCATION="eastus2"
 INDEX="01"
 GOLDEN_IMAGE=""
 PUBLIC_RESOURCES=true
 DEPLOY_NATGW=true
-
-#usage() { echo "Usage: $0 [-d <string>] [-l <string>] [-i <string>] [-g <string>] [-p <bool>] [-n <bool>]" 1>&2; exit 1; }
 
 usage()
 {
@@ -18,6 +17,7 @@ Usage: $0 [-d <string>] [-l <string>] [-i <string>] [-g <string>] [-p <boolean>]
 
 OPTIONS:
    -d      Deployment Name Prefix for all Resources. Default = workshop
+   -e      Environment Name for all Resources. Default = demo
    -l      Azure Region. Default = eastus2
    -i      Index for naming convention for resouces. Default = 01
    -g      Golden Image for your IaaS resources. Default = Empty
@@ -27,12 +27,15 @@ EOF
 }
 
 echo "INPUT VARIABLES:"
-while getopts d:l:i:g:p:n:*: flag
+while getopts d:e:l:i:g:p:n:*: flag
 do
     case "${flag}" in
         d) 
             FLAG_NAME=DEPLOYMENT_NAME
             DEPLOYMENT_NAME=${OPTARG};;
+        e) 
+            FLAG_NAME=ENVIRONMENT
+            ENVIRONMENT=${OPTARG};;
         l) 
             FLAG_NAME=LOCATION
             LOCATION=${OPTARG}
@@ -70,38 +73,38 @@ echo "GENERATED VARIABLES:"
 SUB_ID=$(az account show --query id -o tsv)
 echo " - SUB_ID = " $SUB_ID
 
-RG_NAME="$DEPLOYMENT_NAME-$LOCATION-rg"
+RG_NAME="$DEPLOYMENT_NAME-$ENVIRONMENT-$LOCATION-rg"
 echo " - RG_NAME = " $RG_NAME
 
-VNET_NAME="$DEPLOYMENT_NAME-$LOCATION-vnet-01"
+VNET_NAME="$DEPLOYMENT_NAME-$ENVIRONMENT-$LOCATION-vnet-01"
 echo " - VNET_NAME = " $VNET_NAME
 
-VNET2_NAME="$DEPLOYMENT_NAME-$LOCATION-vnet-02"
+VNET2_NAME="$DEPLOYMENT_NAME-$ENVIRONMENT-$LOCATION-vnet-02"
 echo " - VNET2_NAME = " $VNET2_NAME
 
-NSG_NAME="$DEPLOYMENT_NAME-$LOCATION-public-nsg"
+NSG_NAME="$DEPLOYMENT_NAME-$ENVIRONMENT-$LOCATION-public-nsg"
 echo " - NSG_NAME = " $NSG_NAME
 
-NSG2_NAME="$DEPLOYMENT_NAME-$LOCATION-private-nsg"
+NSG2_NAME="$DEPLOYMENT_NAME-$ENVIRONMENT-$LOCATION-private-nsg"
 echo " - NSG2_NAME = " $NSG2_NAME
 
-KV_NAME="$DEPLOYMENT_NAME-$LOCATION-kv-$INDEX"
+KV_NAME="$ENVIRONMENT-$LOCATION-kv-$INDEX"
 echo " - KV_NAME = " $KV_NAME
 
-VM_NAME="$DEPLOYMENT_NAME-$LOCATION-vm-$INDEX"
+VM_NAME="$DEPLOYMENT_NAME-$ENVIRONMENT-$LOCATION-vm-$INDEX"
 echo " - VM_NAME = " $VM_NAME
 
-VMSS_NAME="$DEPLOYMENT_NAME-$LOCATION-vmss-$INDEX"
+VMSS_NAME="$DEPLOYMENT_NAME-$ENVIRONMENT-$LOCATION-vmss-$INDEX"
 echo " - VMSS_NAME = " $VMSS_NAME
 
-TF_VMSS_NAME="$DEPLOYMENT_NAME-$LOCATION-tf-vmss"
+TF_VMSS_NAME="$DEPLOYMENT_NAME-$ENVIRONMENT-$LOCATION-tf-vmss"
 echo " - TF_VMSS_NAME = " $TF_VMSS_NAME
 
-RSV_NAME="$DEPLOYMENT_NAME-$LOCATION-rsv"
+RSV_NAME="$DEPLOYMENT_NAME-$ENVIRONMENT-$LOCATION-rsv"
 echo " - RSV_NAME = " $RSV_NAME
 
 UNIQUE_STRING=$(echo "/subscriptions/$SUB_ID/resourceGroups/$RG_NAME" | md5sum | head -c 5)
-STORAGE_ACCOUNT="${DEPLOYMENT_NAME}${UNIQUE_STRING}sa"
+STORAGE_ACCOUNT="${DEPLOYMENT_NAME}${ENVIRONMENT}${UNIQUE_STRING}sa"
 echo " - STORAGE_ACCOUNT = " $STORAGE_ACCOUNT
 
 VMSS_PASS="VMSS_pass-$UNIQUE_STRING"
