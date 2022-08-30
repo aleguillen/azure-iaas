@@ -49,6 +49,7 @@ All scripts below will be getting variables from the set-variables.sh script. Yo
 ``` bash
 # Default Values
 DEPLOYMENT_NAME="workshop"
+ENVIRONMENT="demo"
 LOCATION="eastus2"
 INDEX="01"
 GOLDEN_IMAGE=""
