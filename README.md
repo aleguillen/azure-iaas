@@ -43,6 +43,33 @@ To open VS Code in Cloud Shell, for easy file management, run:
 code .
 ```
 
+### [Update Variables Values](./set-variables.sh)
+All scripts below will be getting variables from the set-variables.sh script. You can update the default values of these before getting started. Open **set-variables.sh** and update all the values below as needed, for example if you don't want to provision a Public VNET and VM, just set the PUBLIC_RESOURCES=false. 
+
+``` bash
+# Default Values
+DEPLOYMENT_NAME="workshop"
+LOCATION="eastus2"
+INDEX="01"
+GOLDEN_IMAGE=""
+PUBLIC_RESOURCES=true
+DEPLOY_NATGW=true
+```
+
+Alternatively you can set these values per script bases.For example to set deployment name, location and index value you can set on ech script (located at the top)
+
+```bash
+# USE GLOBAL VARIABLES
+source ./set-variables.sh  -d poc -l southcentralus -i 001
+```
+
+Another example is to set a Golden Image and not using any Public inbound or outbound connectivity.
+
+```bash
+# USE GLOBAL VARIABLES
+source ./set-variables.sh -g "/subscriptions/SUB_ID/resourceGroups/RG_NAME/providers/Microsoft.Compute/galleries/GALLERY_NAME/images/IMG_DEF/versions/1.0.0" -p false -n false
+```
+
 ### [Create Base Infrastructure](./0-base.sh)
 
 Before we get started, we need the follwowing base Azure infrastructure: Resource Group, Virtual Network with Subnets, Network Security Group, Internal and Public Load Balancer, Key Vault and Storage Account.

@@ -1,3 +1,4 @@
+#!/bin/sh
 ## THIS FILE CONTAINS ALL WORKSHOP VARIABLES
 
 # Default Values
@@ -5,9 +6,28 @@ DEPLOYMENT_NAME="workshop"
 LOCATION="eastus2"
 INDEX="01"
 GOLDEN_IMAGE=""
+PUBLIC_RESOURCES=true
+DEPLOY_NATGW=true
+
+#usage() { echo "Usage: $0 [-d <string>] [-l <string>] [-i <string>] [-g <string>] [-p <bool>] [-n <bool>]" 1>&2; exit 1; }
+
+usage()
+{
+cat << EOF
+Usage: $0 [-d <string>] [-l <string>] [-i <string>] [-g <string>] [-p <boolean>] [-n <boolean>]
+
+OPTIONS:
+   -d      Deployment Name Prefix for all Resources. Default = workshop
+   -l      Azure Region. Default = eastus2
+   -i      Index for naming convention for resouces. Default = 01
+   -g      Golden Image for your IaaS resources. Default = Empty
+   -p      If set to true script will provision all public resources. Default = true
+   -n      If set to true script will provision NAT Gateway for Outbound Connectivity. Default = true
+EOF
+}
 
 echo "INPUT VARIABLES:"
-while getopts d:l:i:img: flag
+while getopts d:l:i:g:p:n:*: flag
 do
     case "${flag}" in
         d) 
@@ -15,18 +35,37 @@ do
             DEPLOYMENT_NAME=${OPTARG};;
         l) 
             FLAG_NAME=LOCATION
-            LOCATION=${OPTARG};;
+            LOCATION=${OPTARG}
+            ;;
         i) 
             FLAG_NAME=INDEX
-            INDEX=${OPTARG};;
+            INDEX=${OPTARG}
+            ;;
         g) 
             FLAG_NAME=GOLDEN_IMAGE
-            GOLDEN_IMAGE=${OPTARG};;
+            GOLDEN_IMAGE=${OPTARG}
+            ;;
+        p) 
+            FLAG_NAME=PUBLIC_RESOURCES
+            PUBLIC_RESOURCES=${OPTARG}
+            ;;
+        n) 
+            FLAG_NAME=DEPLOY_NATGW
+            DEPLOY_NATGW=${OPTARG}
+            ;;
+        *) 
+            echo "***************************"
+            echo "* Invalid argument:"
+            echo "***************************"
+            usage
+            exit 1
     esac
+    
     echo " - "$FLAG_NAME"="${OPTARG}
+    shift $((OPTIND-1))
 done
 
-echo "GENERATING VARIABLES:"
+echo "GENERATED VARIABLES:"
 
 SUB_ID=$(az account show --query id -o tsv)
 echo " - SUB_ID = " $SUB_ID
