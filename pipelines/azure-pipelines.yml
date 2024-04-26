@@ -51,6 +51,7 @@ stages:
 
       - name: azure_service_connection_name
         value: 'my-ado-azure-subscription-service-connection'
+        
     jobs:
     - template: /pipelines/environment.yml
       parameters:
