@@ -5,7 +5,7 @@ trigger:
     - main
 
 pool:
-  vmImage: ubuntu-18.04
+  vmImage: ubuntu-latest
 
 steps:
 - script: echo This is a dummy echo
