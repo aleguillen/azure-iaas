@@ -9,3 +9,4 @@ pool:
 
 steps:
 - script: echo This is a dummy echo
+- script: echo This is a dummy echo
